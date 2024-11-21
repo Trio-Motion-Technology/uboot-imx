@@ -1,0 +1,14 @@
+if TARGET_FLEX7_MIDI
+
+config SYS_BOARD
+	default "flex7_midi"
+
+config SYS_VENDOR
+	default "freescale"
+
+config SYS_CONFIG_NAME
+	default "flex7_midi"
+
+source "board/freescale/common/Kconfig"
+
+endif

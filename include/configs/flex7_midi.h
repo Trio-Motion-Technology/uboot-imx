@@ -3,8 +3,8 @@
  * Copyright 2019 NXP
  */
 
-#ifndef __IMX8MP_EVK_H
-#define __IMX8MP_EVK_H
+#ifndef __FLEX7_MIDI_H
+#define __FLEX7_MIDI_H
 
 #include <linux/sizes.h>
 #include <asm/arch/imx-regs.h>
@@ -54,6 +54,7 @@
 #define CONFIG_CMD_READ
 #define CONFIG_SERIAL_TAG
 #define CONFIG_FASTBOOT_USB_DEV 0
+#define CONFIG_SYS_MMC_MAX_DEVICE 3  /* for api to enumerate mmc devs */
 
 #define CONFIG_REMAKE_ELF
 /* ENET Config */
@@ -96,7 +97,7 @@
 	JAILHOUSE_ENV \
 	"script=boot.scr\0" \
 	"image=Image\0" \
-	"splashimage=0x50000000\0" \
+   "bootdelay=0\0" \
 	"console=ttymxc1,115200\0" \
 	"fdt_addr=0x43000000\0"			\
 	"fdt_high=0xffffffffffffffff\0"		\
@@ -105,13 +106,23 @@
 	"initrd_addr=0x43800000\0"		\
 	"initrd_high=0xffffffffffffffff\0" \
 	"mmcdev="__stringify(CONFIG_SYS_MMC_ENV_DEV)"\0" \
+   "sddev=1\0" \
 	"mmcpart=" __stringify(CONFIG_SYS_MMC_IMG_LOAD_PART) "\0" \
 	"mmcroot=" CONFIG_MMCROOT " rootwait rw\0" \
+	"sdroot=setenv mmcroot /dev/mmcblk1p2 rootwait rw\0" \
 	"mmcautodetect=yes\0" \
-   "preboot=if fatload mmc 1 ${loadaddr} splash.bin ; then " \
-      "go ${loadaddr} ; " \
-      "fi;\0" \
-	"mmcargs=setenv bootargs ${jh_clk} console=${console} root=${mmcroot}\0 " \
+   "preboot=mmc dev ${mmcdev} ; " \
+      "if fatload mmc ${mmcdev} ${loadaddr} splash.bin ; then " \
+      "go ${loadaddr} ; fi ;" \
+      "if fatload mmc ${sddev} 0x58000000 r_770.zenc ; " \
+      "then if fatload mmc ${mmcdev}:1 ${loadaddr} reflash.bin ; " \
+      "then go ${loadaddr} ; fi ; fi ; " \
+      "i2c dev 1 ; " \
+      "i2c mw 0x53 00 00 ; " \
+      "i2c read 0x53 0 4 ${loadaddr} ; " \
+      "set_serial_number ${loadaddr} ; " \
+      "mw.l 0xb0000000 0 3\0" \
+	"mmcargs=setenv bootargs ${jh_clk} console=${console} root=${mmcroot} stmmaceth=phyaddr:3 isolcpus=1\0" \
 	"loadbootscript=fatload mmc ${mmcdev}:${mmcpart} ${loadaddr} ${script};\0" \
 	"bootscript=echo Running bootscript from mmc ...; " \
 		"source\0" \
@@ -180,8 +191,15 @@
 #define CONFIG_ENV_SPI_MODE		CONFIG_SF_DEFAULT_MODE
 #define CONFIG_ENV_SPI_MAX_HZ		CONFIG_SF_DEFAULT_SPEED
 
+#if 0
+/* SD CARD BOOT */
 #define CONFIG_SYS_MMC_ENV_DEV		1   /* USDHC2 */
 #define CONFIG_MMCROOT			"/dev/mmcblk1p2"  /* USDHC2 */
+#else
+/* eMMC BOOT */
+#define CONFIG_SYS_MMC_ENV_DEV		2   /* eMMC */
+#define CONFIG_MMCROOT			"/dev/mmcblk2p2"  /* eMMC */
+#endif
 
 /* Size of malloc() pool */
 #define CONFIG_SYS_MALLOC_LEN		SZ_32M

@@ -17,8 +17,8 @@
 #define UB_MAX_MR	5	/* max mem regions number */
 #define UB_MAX_DEV	6	/* max devices number */
 
-extern void *syscall_ptr;
-extern uint32_t search_hint;
+extern void * syscall_ptr;
+extern uint64_t search_hint;
 
 int	syscall(int, int *, ...);
 int	api_search_sig(struct api_signature **sig);

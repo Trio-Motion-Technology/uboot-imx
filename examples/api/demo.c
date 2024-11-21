@@ -33,10 +33,11 @@ int main(int argc, char * const argv[])
 	lbasize_t rlen;
 	struct display_info disinfo;
 
+   search_hint= 0x7df20000;
 	if (!api_search_sig(&sig))
 		return -1;
 
-	syscall_ptr = sig->syscall;
+	syscall_ptr = (uint64_t)sig->syscall;
 	if (syscall_ptr == NULL)
 		return -2;
 
@@ -88,6 +89,7 @@ int main(int argc, char * const argv[])
 	printf("\n*** Operations on devices ***\n");
 
 	/* test opening a device already opened */
+#if 0
 	h = 0;
 	if ((rv = ub_dev_open(h)) != 0) {
 		errf("open device %d error %d\n", h, rv);
@@ -97,7 +99,7 @@ int main(int argc, char * const argv[])
 		errf("open device %d error %d\n", h, rv);
 
 	ub_dev_close(h);
-
+#endif
 	/* test storage */
 	printf("Trying storage devices...\n");
 	for (i = 0; i < devs_no; i++) {

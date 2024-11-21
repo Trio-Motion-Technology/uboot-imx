@@ -24,30 +24,51 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#define UART_PAD_CTRL	(PAD_CTL_DSE6 | PAD_CTL_FSEL1)
+#define UART_PAD_CTRL_RX	(PAD_CTL_DSE6 | PAD_CTL_PUE | PAD_CTL_PE )
+#define UART_PAD_CTRL_TX	(PAD_CTL_DSE6 | PAD_CTL_PE )
 #define WDOG_PAD_CTRL	(PAD_CTL_DSE6 | PAD_CTL_ODE | PAD_CTL_PUE | PAD_CTL_PE)
 
 static iomux_v3_cfg_t const uart_pads[] = {
-	MX8MP_PAD_UART2_RXD__UART2_DCE_RX | MUX_PAD_CTRL(UART_PAD_CTRL),
-	MX8MP_PAD_UART2_TXD__UART2_DCE_TX | MUX_PAD_CTRL(UART_PAD_CTRL),
+// ORIGINAL SETTING FOR FUNCTIONING TX/RX 
+//	MX8MP_PAD_UART2_RXD__UART2_DCE_RX | MUX_PAD_CTRL(UART_PAD_CTRL_RX),
+//	MX8MP_PAD_UART2_TXD__UART2_DCE_TX | MUX_PAD_CTRL(UART_PAD_CTRL_TX),
+//
+// FOR PRODUCTION, WE DISABLE THE UART PINS. THE UART IS PATCHED TO CONNECT TO
+// INACCESSIBLE/ UNUSED PINS. PULLUP IS APPLIED TO RX SO THE LEVEL CANT
+// DRIFT LOW TO GENERATE A CHARACTER START PULSE 
+	MX8MP_PAD_UART2_RXD__GPIO5_IO24 | MUX_PAD_CTRL(NO_PAD_CTRL),
+	MX8MP_PAD_UART2_TXD__GPIO5_IO25 | MUX_PAD_CTRL(NO_PAD_CTRL),
+	MX8MP_PAD_SAI3_TXFS__UART2_DCE_RX | MUX_PAD_CTRL(UART_PAD_CTRL_RX),
+	MX8MP_PAD_SAI3_TXC__UART2_DCE_TX | MUX_PAD_CTRL(UART_PAD_CTRL_TX),
 };
 
 static iomux_v3_cfg_t const wdog_pads[] = {
-	MX8MP_PAD_GPIO1_IO02__WDOG1_WDOG_B  | MUX_PAD_CTRL(WDOG_PAD_CTRL),
+   MX8MP_PAD_SAI5_RXD0__GPIO3_IO21  | MUX_PAD_CTRL(WDOG_PAD_CTRL),
+/*	MX8MP_PAD_GPIO1_IO02__WDOG1_WDOG_B  | MUX_PAD_CTRL(WDOG_PAD_CTRL),*/
 };
 
 #ifdef CONFIG_MXC_SPI
 #define GPIO_ECSPI2_CS IMX_GPIO_NR(5, 12)
 #define SPI_PAD_CTRL (PAD_CTL_DSE2 | PAD_CTL_HYS)
 
-/* ECSPI2 drives the 96x64 pixel 4 wire SPI display
+#ifdef CONFIG_FLEX7_MIDI
+/* ECSPI1 drives the SPI to the PDI interface on the ET1100 Ethercat */
+static iomux_v3_cfg_t const ecspi1_pads[] = {
+	MX8MP_PAD_ECSPI1_SCLK__ECSPI1_SCLK | MUX_PAD_CTRL(SPI_PAD_CTRL),
+	MX8MP_PAD_ECSPI1_MOSI__ECSPI1_MOSI | MUX_PAD_CTRL(SPI_PAD_CTRL),
+	MX8MP_PAD_ECSPI1_MISO__ECSPI1_MISO | MUX_PAD_CTRL(SPI_PAD_CTRL),
+	MX8MP_PAD_ECSPI1_SS0__ECSPI1_SS0 | MUX_PAD_CTRL(SPI_PAD_CTRL)
+};
+#endif
+
+/* On Flex7 midi, ECSPI2 drives the 96x64 pixel 4 wire SPI display
  *
  * Contrary to the NXP drivers and the usual config here,
  * SCLK,MOSI,SS0 driven direct by ECSPI2 hardware, and the
  * D/C line driven by us using the MISO pin overridden as a GPIO.
  */ 
 
-static iomux_v3_cfg_t const ecspi2_pads[] = {
+ static iomux_v3_cfg_t const ecspi2_pads[] = {
 	MX8MP_PAD_ECSPI2_SCLK__ECSPI2_SCLK | MUX_PAD_CTRL(SPI_PAD_CTRL),
 	MX8MP_PAD_ECSPI2_MOSI__ECSPI2_MOSI | MUX_PAD_CTRL(SPI_PAD_CTRL),
 	MX8MP_PAD_ECSPI2_SS0__ECSPI2_SS0 | MUX_PAD_CTRL(SPI_PAD_CTRL),
@@ -60,9 +81,18 @@ static iomux_v3_cfg_t const ecspi2_pads[] = {
 
 static void setup_spi(void)
 {
+#ifdef CONFIG_FLEX7_MIDI
+	imx_iomux_v3_setup_multiple_pads(ecspi1_pads, ARRAY_SIZE(ecspi1_pads));
+#endif
 	imx_iomux_v3_setup_multiple_pads(ecspi2_pads, ARRAY_SIZE(ecspi2_pads));
-	gpio_request(GPIO_ECSPI2_CS, "ecspi2_cs");
 
+/* suspect this is not needed on flex7 */
+#ifndef CONFIG_FLEX7_MIDI
+	gpio_request(GPIO_ECSPI2_CS, "ecspi2_cs");
+#endif
+
+	/*init ecspi1 clk*/
+	init_clk_ecspi(0);
 	/*init ecspi2 clk*/
 	init_clk_ecspi(1);
 }
@@ -131,10 +161,17 @@ int ft_board_setup(void *blob, bd_t *bd)
 #endif
 
 #ifdef CONFIG_FEC_MXC
-#define FEC_RST_PAD IMX_GPIO_NR(4, 2)
+#ifdef CONFIG_FLEX7_MIDI
+#define FEC_RST_PAD IMX_GPIO_NR(1, 9)
 static iomux_v3_cfg_t const fec1_rst_pads[] = {
-	MX8MP_PAD_SAI1_RXD0__GPIO4_IO02 | MUX_PAD_CTRL(NO_PAD_CTRL),
+	MX8MP_PAD_GPIO1_IO09__GPIO1_IO09 | MUX_PAD_CTRL(NO_PAD_CTRL),
 };
+#else
+#define FEC_RST_PAD IMX_GPIO_NR(4,2)
+static iomux_v3_cfg_t const fec1_rst_pads[] = {
+   MX8MP_PAD_SAI1_RXD0__GPIO4_IO02 | MUX_PAD_CTRL(NO_PAD_CTRL),
+};
+#endif
 
 static void setup_iomux_fec(void)
 {
@@ -154,12 +191,9 @@ static int setup_fec(void)
 		(struct iomuxc_gpr_base_regs *)IOMUXC_GPR_BASE_ADDR;
 
 	setup_iomux_fec();
+	setbits_le32(&gpr->gpr[1], BIT(13));
 
-	/* Enable RGMII TX clk output */
-	setbits_le32(&gpr->gpr[1], BIT(22));
-
-	//return set_clk_enet(ENET_125MHZ);
-	return 0;
+   return set_clk_enet(ENET_50MHZ);
 }
 #endif
 
@@ -534,9 +568,11 @@ int board_init(void)
 	init_usb_clk();
 #endif
 
+#ifndef CONFIG_FLEX7_MIDI
 	/* enable the dispmix & mipi phy power domain */
 	call_imx_sip(FSL_SIP_GPC, FSL_SIP_CONFIG_GPC_PM_DOMAIN, DISPMIX, true, 0);
 	call_imx_sip(FSL_SIP_GPC, FSL_SIP_CONFIG_GPC_PM_DOMAIN, MIPI, true, 0);
+#endif
 
 	return 0;
 }

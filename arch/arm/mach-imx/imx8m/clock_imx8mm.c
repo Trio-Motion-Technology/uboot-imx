@@ -44,12 +44,14 @@ int enable_i2c_clk(unsigned char enable, unsigned i2c_num)
 
 static struct imx_int_pll_rate_table imx8mm_fracpll_tbl[] = {
 	PLL_1443X_RATE(1000000000U, 250, 3, 1, 0),
+	PLL_1443X_RATE(900000000U, 225, 3, 1, 0),
 	PLL_1443X_RATE(800000000U, 200, 3, 1, 0),
 	PLL_1443X_RATE(750000000U, 250, 2, 2, 0),
 	PLL_1443X_RATE(650000000U, 325, 3, 2, 0),
 	PLL_1443X_RATE(600000000U, 300, 3, 2, 0),
 	PLL_1443X_RATE(594000000U, 99, 1, 2, 0),
-	PLL_1443X_RATE(400000000U, 400, 3, 3, 0),
+	PLL_1443X_RATE(500000000U, 250, 3, 2, 0),   
+	PLL_1443X_RATE(400000000U, 300, 9, 1, 0),
 	PLL_1443X_RATE(266000000U, 266, 3, 3, 0),
 	PLL_1443X_RATE(167000000U, 334, 3, 4, 0),
 	PLL_1443X_RATE(100000000U, 200, 3, 4, 0),
@@ -225,15 +227,20 @@ int intpll_configure(enum pll_clocks pll, ulong freq)
 		pll_div_ctl_val = INTPLL_MAIN_DIV_VAL(0x12c) |
 			INTPLL_PRE_DIV_VAL(3) | INTPLL_POST_DIV_VAL(2);
 		break;
+	case MHZ(500):
+		/* 24 * 0xfa / 3 / 2 ^ 2 */
+		pll_div_ctl_val = INTPLL_MAIN_DIV_VAL(0xfa) |
+			INTPLL_PRE_DIV_VAL(3) | INTPLL_POST_DIV_VAL(2);
+		break;
 	case MHZ(750):
 		/* 24 * 0xfa / 2 / 2 ^ 2 */
 		pll_div_ctl_val = INTPLL_MAIN_DIV_VAL(0xfa) |
 			INTPLL_PRE_DIV_VAL(2) | INTPLL_POST_DIV_VAL(2);
 		break;
 	case MHZ(800):
-		/* 24 * 0x190 / 3 / 2 ^ 2 */
-		pll_div_ctl_val = INTPLL_MAIN_DIV_VAL(0x190) |
-			INTPLL_PRE_DIV_VAL(3) | INTPLL_POST_DIV_VAL(2);
+		/* 24 * 0x12c / 9 / 2 ^ 1 */
+		pll_div_ctl_val = INTPLL_MAIN_DIV_VAL(0x12C) |
+			INTPLL_PRE_DIV_VAL(9) | INTPLL_POST_DIV_VAL(1);
 		break;
 	case MHZ(1000):
 		/* 24 * 0xfa / 3 / 2 ^ 1 */
@@ -549,7 +556,7 @@ int clock_init(void)
 
 	clock_enable(CCGR_SEC_DEBUG, 1);
 
-	enable_display_clk(1);
+//	enable_display_clk(1);
 	return 0;
 };
 

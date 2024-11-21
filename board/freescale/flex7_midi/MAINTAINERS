@@ -1,0 +1,6 @@
+i.MX8MP Trio Flex7 Midi board
+M:	Robin Page <rpage@triomotion.com>
+S:	Maintained
+F:	board/freescale/flex7_midi/
+F:	include/configs/flex7_midi.h
+F:	configs/imx8mp_flex7_midi_defconfig

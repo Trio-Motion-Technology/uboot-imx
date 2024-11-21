@@ -29,15 +29,19 @@ syscall:
 	.text
 	.globl _start
 _start:
-	ldr	ip, =search_hint
-	str	sp, [ip]
-	b	main
+	ldr	x16, =search_hint
+   mov  x17,sp
+	str  x17, [x16]
+	b	  main
 
 
 	.globl syscall
 syscall:
-	ldr	ip, =syscall_ptr
-	ldr	pc, [ip]
+   mov   x16, xzr
+   mov   x17, xzr
+	ldr	x16, =syscall_ptr
+	ldr   x17, [x16]
+   br	   x17
 
 #elif defined(CONFIG_MIPS)
 #include <asm/asm.h>
@@ -69,10 +73,11 @@ return_addr:
 #endif
 
 	.globl syscall_ptr
+	.align	16
 syscall_ptr:
-	.align	8
-	.long	0
+	.quad	0
 
 	.globl search_hint
+	.align	16
 search_hint:
-	.long   0
+	.quad   0
